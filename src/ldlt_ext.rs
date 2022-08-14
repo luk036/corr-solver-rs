@@ -14,11 +14,11 @@ pub struct LDLTMgr {
     /// the rows where the process self.p.0s and self.p.1s
     pub p: (usize, usize),
     /// witness vector
-    pub witness_vec: Array1<f64>,         
+    pub witness_vec: Array1<f64>,
     /// dimension
-    n: usize,                
+    n: usize,
     /// temporary storage
-    temp_storage: Array2<f64>,            
+    temp_storage: Array2<f64>,
 }
 
 impl LDLTMgr {
@@ -35,9 +35,9 @@ impl LDLTMgr {
             n,
             p: (0, 0),
             witness_vec: Array1::zeros(n),
-            temp_storage: Array2::zeros((n,n)),
+            temp_storage: Array2::zeros((n, n)),
         }
-    } 
+    }
 
     /**
      * Perform LDLT Factorization
@@ -50,7 +50,7 @@ impl LDLTMgr {
      * to make $v'*A[:p,:p]*v < 0$
      */
     pub fn factorize(&mut self, mat: &Array2<f64>) -> bool {
-        self.factor(&mut |i: usize, j: usize| mat[(i, j)] )
+        self.factor(&mut |i: usize, j: usize| mat[(i, j)])
     }
 
     /**
@@ -61,7 +61,7 @@ impl LDLTMgr {
      *
      * See also: factorize()
      */
-    // template <typename Callable, bool Allow_semidefinite = false> 
+    // template <typename Callable, bool Allow_semidefinite = false>
     pub fn factor<F>(&mut self, get_elem: &mut F) -> bool
     where
         F: FnMut(usize, usize) -> f64,
@@ -74,7 +74,7 @@ impl LDLTMgr {
             let mut d = get_elem(i, self.p.0);
             for j in self.p.0..i {
                 self.temp_storage[(j, i)] = d;
-                self.temp_storage[(i, j)] = d / self.temp_storage[(j, j)];  // note: temp_storage(j, i) here!
+                self.temp_storage[(i, j)] = d / self.temp_storage[(j, j)]; // note: temp_storage(j, i) here!
                 let s = j + 1;
                 d = get_elem(i, s);
                 for k in self.p.0..s {
@@ -99,7 +99,9 @@ impl LDLTMgr {
      * @return false
      */
     #[inline]
-    pub fn is_spd(&self) -> bool { self.p.1 == 0 }
+    pub fn is_spd(&self) -> bool {
+        self.p.1 == 0
+    }
 
     /*
      * witness that certifies $A$ is not
