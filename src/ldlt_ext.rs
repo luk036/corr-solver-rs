@@ -12,7 +12,7 @@ use ndarray::prelude::*;
 #[derive(Debug)]
 pub struct LDLTMgr {
     /// the rows where the process self.p.0s and self.p.1s
-    pub p: (usize, usize),
+    pub p: usize,
     /// witness vector
     pub witness_vec: Array1<f64>,
     /// dimension
@@ -33,7 +33,7 @@ impl LDLTMgr {
     pub fn new(n: usize) -> Self {
         LDLTMgr {
             n,
-            p: (0, 0),
+            p: 0,
             witness_vec: Array1::zeros(n),
             temp_storage: Array2::zeros((n, n)),
         }
@@ -66,25 +66,25 @@ impl LDLTMgr {
     where
         F: FnMut(usize, usize) -> f64,
     {
-        self.p = (0, 0);
+        self.p = 0;
         // let mut (self.p.0, self.p.1) = &mut self.p;
 
         for i in 0..self.n {
             // let mut j = self.p.0;
-            let mut d = get_elem(i, self.p.0);
-            for j in self.p.0..i {
+            let mut d = get_elem(i, 0);
+            for j in 0..i {
                 self.temp_storage[(j, i)] = d;
                 self.temp_storage[(i, j)] = d / self.temp_storage[(j, j)]; // note: temp_storage(j, i) here!
                 let s = j + 1;
                 d = get_elem(i, s);
-                for k in self.p.0..s {
+                for k in 0..s {
                     d -= self.temp_storage[(i, k)] * self.temp_storage[(k, s)];
                 }
             }
             self.temp_storage[(i, i)] = d;
 
             if d <= 0.0 {
-                self.p.1 = i + 1;
+                self.p = i + 1;
                 break;
             }
         }
@@ -100,7 +100,7 @@ impl LDLTMgr {
      */
     #[inline]
     pub fn is_spd(&self) -> bool {
-        self.p.1 == 0
+        self.p == 0
     }
 
     /*
@@ -108,7 +108,17 @@ impl LDLTMgr {
      * symmetric positive definite (spd)
      *
      */
-    // pub fn witness(&self) -> f64;
+    pub fn witness(&mut self) -> f64 {
+        let n = self.p;
+        self.witness_vec[n - 1] = 1.0;
+        for i in (1..n).rev() {
+            self.witness_vec[i - 1] = 0.0;
+            for k in i..n {
+                self.witness_vec[i - 1] -= self.temp_storage[(k, i - 1)] * self.witness_vec[k];
+            }
+        }
+        -self.temp_storage[(n - 1, n - 1)]
+    }
 
     /*
      * Calculate v'*{A}(p,p)*v
