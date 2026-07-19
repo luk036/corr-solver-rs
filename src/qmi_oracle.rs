@@ -72,8 +72,8 @@ impl HOmni for Qmi {
         let nx = self.nx.get();
         let fx = self.Fx.borrow();
         let mut wit_vec = vec![0.0; self.m];
-        for i in start..stop {
-            wit_vec[i] = ldlt_mgr.wit[i];
+        for (i, w) in wit_vec[start..stop].iter_mut().enumerate() {
+            *w = ldlt_mgr.wit[start + i];
         }
         let mut Av = vec![0.0; fx.ncols()];
         for c in 0..fx.ncols() {

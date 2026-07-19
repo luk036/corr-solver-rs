@@ -30,8 +30,8 @@ impl LMI0Oracle {
         }
         let ep = self.ldlt_mgr.witness();
         let mut g_vec = vec![0.0; n];
-        for i in 0..n {
-            g_vec[i] = -self.ldlt_mgr.sym_quad(&self.mat_f[i]);
+        for (i, g) in g_vec.iter_mut().enumerate().take(n) {
+            *g = -self.ldlt_mgr.sym_quad(&self.mat_f[i]);
         }
         Some((Arr::from(g_vec), ep))
     }
