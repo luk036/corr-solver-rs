@@ -1,8 +1,8 @@
+use crate::gmi_oracle::{GMIOracle, HOmni};
 use ellalgo_rs::arr::Arr;
 use lmi_solver_rs::ldlt_mgr::LDLTMgr;
 use ndarray::Array2;
 use std::cell::{Cell, RefCell};
-use crate::gmi_oracle::{GMIOracle, HOmni};
 
 pub struct Qmi {
     pub F: Vec<Array2<f64>>,
