@@ -22,7 +22,7 @@ impl Qmi {
             F,
             F0,
             Fx: RefCell::new(Array2::zeros((m, n))),
-            count: Cell::new(0),
+            count: Cell::new(30),
             t: Cell::new(0.0),
             m,
             nx: Cell::new(0),
