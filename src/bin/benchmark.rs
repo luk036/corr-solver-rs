@@ -61,7 +61,8 @@ fn main() {
     let m = 4usize;
 
     println!("Reading data from benchmark_data.bin...");
-    let mut file = File::open("benchmark_data.bin").expect("benchmark_data.bin not found (run C++ benchmark first)");
+    let mut file = File::open("benchmark_data.bin")
+        .expect("benchmark_data.bin not found (run C++ benchmark first)");
     let y_arr = read_arr(&mut file);
     let n_sites = y_arr.rows();
     println!("Matrix dimension: {}", n_sites);
@@ -89,7 +90,8 @@ fn main() {
         let mut ellip = Ell::new(Arr::from(val), x);
         let mut t = 1e100;
         let start = Instant::now();
-        let (x_best, num_iters) = cutting_plane_optim(&mut omega, &mut ellip, &mut t, &Options::default());
+        let (x_best, num_iters) =
+            cutting_plane_optim(&mut omega, &mut ellip, &mut t, &Options::default());
         let elapsed = start.elapsed().as_secs_f64();
         total_lsq += elapsed;
         lsq_iters = num_iters;
@@ -98,7 +100,9 @@ fn main() {
             if let Some(xb) = &x_best {
                 print!("  coeffs = [");
                 for i in 0..m {
-                    if i > 0 { print!(", "); }
+                    if i > 0 {
+                        print!(", ");
+                    }
                     print!("{:.5}", xb[i]);
                 }
                 println!("]");
@@ -118,7 +122,8 @@ fn main() {
         let mut ellip = Ell::new_with_scalar(500.0, x);
         let mut t = 1e100;
         let start = Instant::now();
-        let (_x_best, num_iters) = cutting_plane_optim(&mut omega, &mut ellip, &mut t, &Options::default());
+        let (_x_best, num_iters) =
+            cutting_plane_optim(&mut omega, &mut ellip, &mut t, &Options::default());
         let elapsed = start.elapsed().as_secs_f64();
         total_mle += elapsed;
         mle_iters = num_iters;

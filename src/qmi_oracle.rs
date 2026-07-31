@@ -1,8 +1,8 @@
+use crate::gmi_oracle::{GMIOracle, HOmni};
 use ellalgo_rs::arr::Arr;
 use lmi_solver_rs::ldlt_mgr::LDLTMgr;
 use ndarray::Array2;
 use std::cell::{Cell, RefCell};
-use crate::gmi_oracle::{GMIOracle, HOmni};
 
 pub struct Qmi {
     pub F: Vec<Array2<f64>>,
@@ -22,7 +22,7 @@ impl Qmi {
             F,
             F0,
             Fx: RefCell::new(Array2::zeros((m, n))),
-            count: Cell::new(0),
+            count: Cell::new(30),
             t: Cell::new(0.0),
             m,
             nx: Cell::new(0),
@@ -72,8 +72,8 @@ impl HOmni for Qmi {
         let nx = self.nx.get();
         let fx = self.Fx.borrow();
         let mut wit_vec = vec![0.0; self.m];
-        for i in start..stop {
-            wit_vec[i] = ldlt_mgr.wit[i];
+        for (i, w) in wit_vec[start..stop].iter_mut().enumerate() {
+            *w = ldlt_mgr.wit[start + i];
         }
         let mut Av = vec![0.0; fx.ncols()];
         for c in 0..fx.ncols() {

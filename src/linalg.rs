@@ -5,7 +5,7 @@ use rand_distr::{Distribution, Normal};
 use std::cell::RefCell;
 
 thread_local! {
-    static RNG: RefCell<StdRng> = RefCell::new(StdRng::from_entropy());
+    static RNG: RefCell<StdRng> = RefCell::new(StdRng::from_os_rng());
 }
 
 pub fn random_seed(seed: u64) {

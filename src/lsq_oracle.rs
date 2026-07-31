@@ -1,8 +1,8 @@
+use crate::lmi0_oracle::LMI0Oracle;
+use crate::qmi_oracle::QMIOracle;
 use ellalgo_rs::arr::Arr;
 use ellalgo_rs::cutting_plane::{OracleOptim, SingleCut};
 use ndarray::Array2;
-use crate::lmi0_oracle::LMI0Oracle;
-use crate::qmi_oracle::QMIOracle;
 
 pub struct LsqOracle {
     qmi: QMIOracle,

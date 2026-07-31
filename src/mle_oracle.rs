@@ -1,8 +1,8 @@
+use crate::lmi0_oracle::LMI0Oracle;
 use ellalgo_rs::arr::Arr;
 use ellalgo_rs::cutting_plane::{OracleFeas, OracleOptim, SingleCut};
 use lmi_solver_rs::lmi_oracle::LMIOracle;
 use ndarray::Array2;
-use crate::lmi0_oracle::LMI0Oracle;
 
 pub struct MleOracle {
     Y: Array2<f64>,
@@ -16,7 +16,12 @@ impl MleOracle {
         let two_y = &Y * 2.0;
         let lmi0 = LMI0Oracle::new(Sigma.clone());
         let lmi = LMIOracle::new(Sigma.clone(), two_y);
-        MleOracle { Y, Sigma, lmi0, lmi }
+        MleOracle {
+            Y,
+            Sigma,
+            lmi0,
+            lmi,
+        }
     }
 }
 
