@@ -11,7 +11,7 @@ license = "MIT OR Apache-2.0"
 ellalgo-rs = "0.1.8"
 lmi-solver-rs = "0.1.2"
 ndarray = "0.17.2"
-rand = "0.9"
+rand = "0.10"
 rand_distr = "0.5"
 
 [[bin]]
