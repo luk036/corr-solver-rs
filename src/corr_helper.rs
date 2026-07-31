@@ -1,6 +1,6 @@
+use crate::linalg;
 use ellalgo_rs::arr::{linspace, Arr};
 use ndarray::Array2;
-use crate::linalg;
 
 pub fn create_2d_sites(nx: usize, ny: usize) -> Arr {
     let sx = linspace(0.0, 10.0, nx);
