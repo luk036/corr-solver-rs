@@ -32,14 +32,6 @@ Add to `Cargo.toml`:
 corr-solver-rs = "0.1"
 ```
 
-## Installation
-
-### Cargo
-
-```shell
-cargo install corr-solver-rs
-```
-
 ## License
 
 Licensed under either of
