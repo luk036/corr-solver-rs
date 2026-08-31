@@ -29,12 +29,14 @@ impl Qmi {
         }
     }
 
+    #[inline]
     pub fn update(&self, t: f64) {
         self.t.set(t);
     }
 }
 
 impl HOmni for Qmi {
+    #[inline]
     fn reset_count(&self) {
         self.count.set(0);
     }
@@ -113,10 +115,12 @@ impl QMIOracle {
         QMIOracle { qmi, gmi }
     }
 
+    #[inline]
     pub fn update(&self, t: f64) {
         self.qmi.update(t);
     }
 
+    #[inline]
     pub fn assess_feas(&mut self, x: &Arr) -> Option<(Arr, f64)> {
         self.gmi.assess_feas(x, &self.qmi)
     }
