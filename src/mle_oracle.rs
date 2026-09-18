@@ -94,13 +94,24 @@ fn ndarray_matmul(a: &Array2<f64>, b: &Array2<f64>) -> Array2<f64> {
     let k = a.ncols();
     let n = b.ncols();
     let mut out = Array2::zeros((m, n));
+    // `as_standard_layout` is a no-op for C-order input and only copies when the
+    // strides require it — `invR.t().to_owned()` yields an F-order array.
+    let a = a.as_standard_layout();
+    let b = b.as_standard_layout();
+    let ad = a.as_slice().expect("standard layout is contiguous");
+    let bd = b.as_slice().expect("standard layout is contiguous");
+    let od = out.as_slice_mut().expect("out is contiguous");
+    // i-k-j order: `b`'s row `t` and `out`'s row `i` are both contiguous, so the
+    // inner loop auto-vectorizes and `b` streams through cache. The i-j-t order
+    // this replaces walked `b` one column at a time (stride n).
     for i in 0..m {
-        for j in 0..n {
-            let mut s = 0.0;
-            for t in 0..k {
-                s += a[[i, t]] * b[[t, j]];
+        let orow = &mut od[i * n..(i + 1) * n];
+        for t in 0..k {
+            let ait = ad[i * k + t];
+            let brow = &bd[t * n..(t + 1) * n];
+            for j in 0..n {
+                orow[j] += ait * brow[j];
             }
-            out[[i, j]] = s;
         }
     }
     out

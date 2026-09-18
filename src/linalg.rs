@@ -45,13 +45,20 @@ pub fn matmul(a: &Arr, b: &Arr) -> Arr {
     let k = a.cols();
     let n = b.cols();
     let mut out = Arr::zeros(m, n);
+    let ad = a.data();
+    let bd = b.data();
+    let od = out.data_mut();
+    // i-k-j order: `b`'s row `t` and `out`'s row `i` are both contiguous, so the
+    // inner loop auto-vectorizes and `b` streams through cache. The i-j-t order
+    // this replaces walked `b` one column at a time (stride n).
     for i in 0..m {
-        for j in 0..n {
-            let mut s = 0.0;
-            for t in 0..k {
-                s += a.get(i, t) * b.get(t, j);
+        let orow = &mut od[i * n..(i + 1) * n];
+        for t in 0..k {
+            let ait = ad[i * k + t];
+            let brow = &bd[t * n..(t + 1) * n];
+            for j in 0..n {
+                orow[j] += ait * brow[j];
             }
-            out.set(i, j, s);
         }
     }
     out
@@ -106,8 +113,26 @@ pub fn inv(a: &Arr) -> Arr {
 }
 
 pub fn trace(a: &Arr) -> f64 {
-    let d = diagonal(a);
-    d.sum()
+    assert!(a.is_2d() && a.rows() == a.cols());
+    let n = a.rows();
+    let d = a.data();
+    let mut s = 0.0;
+    for i in 0..n {
+        s += d[i * n + i];
+    }
+    s
+}
+
+/// Frobenius inner product: `sum(a[i] * b[i])` over the flattened arrays.
+pub fn frob_inner(a: &Arr, b: &Arr) -> f64 {
+    assert_eq!(a.size(), b.size());
+    let ad = a.data();
+    let bd = b.data();
+    let mut s = 0.0;
+    for i in 0..ad.len() {
+        s += ad[i] * bd[i];
+    }
+    s
 }
 
 pub fn norm(a: &Arr) -> f64 {
