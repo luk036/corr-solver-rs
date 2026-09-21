@@ -18,5 +18,9 @@ rand_distr = "0.5"
 name = "benchmark"
 path = "src/bin/benchmark.rs"
 
+[[bin]]
+name = "experiments"
+path = "src/bin/experiments.rs"
+
 [dev-dependencies]
 approx_eq = "0.1.8"
