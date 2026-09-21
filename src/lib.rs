@@ -18,8 +18,12 @@
 
 #![allow(non_snake_case)]
 
+pub mod bspline;
 pub mod corr_helper;
+pub mod eigen;
+pub mod fitting;
 pub mod gmi_oracle;
+pub mod halton;
 pub mod linalg;
 pub mod lmi0_oracle;
 pub mod lsq_oracle;
