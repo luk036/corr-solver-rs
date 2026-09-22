@@ -1,11 +1,16 @@
 use corr_solver_rs::bspline::{
     clamped_knots, eval_bspline_basis, eval_bspline_curve, generate_bspline_info,
 };
+use corr_solver_rs::convert::{arr_to_ndarray as arr_to_nd, ndarray_to_arr as nd_to_arr};
 use corr_solver_rs::corr_helper::{construct_distance_matrix, construct_poly_matrix};
 use corr_solver_rs::eigen::{design_cond, min_eig};
-use corr_solver_rs::fitting::{cccp_corr_step, corr_mle_obj, corr_omega, lsq_corr_generic};
+use corr_solver_rs::fitting::{
+    cccp_corr_step, corr_mle_obj, corr_omega, eval_poly_curve, lsq_corr_generic,
+};
 use corr_solver_rs::halton::create_2d_sites_halton;
+use corr_solver_rs::kernels::gaussian_kernel;
 use corr_solver_rs::linalg;
+use corr_solver_rs::ndops;
 use ellalgo_rs::arr::{linspace, Arr};
 use ndarray::Array2;
 use std::fs::{create_dir_all, File};
@@ -13,46 +18,6 @@ use std::io::Write;
 
 const N_SITE: usize = 20;
 const N_GRID: usize = 1200;
-
-fn arr_to_nd(a: &Arr) -> Array2<f64> {
-    let (n, m) = (a.rows(), a.cols());
-    let mut out = Array2::zeros((n, m));
-    for i in 0..n {
-        for j in 0..m {
-            out[[i, j]] = a.get(i, j);
-        }
-    }
-    out
-}
-
-fn nd_to_arr(a: &Array2<f64>) -> Arr {
-    let (n, m) = (a.nrows(), a.ncols());
-    let mut out = Arr::zeros(n, m);
-    for i in 0..n {
-        for j in 0..m {
-            out.set(i, j, a[[i, j]]);
-        }
-    }
-    out
-}
-
-fn frob_nd(a: &Array2<f64>) -> f64 {
-    a.iter().map(|v| v * v).sum::<f64>().sqrt()
-}
-
-fn matvec(a: &Arr, x: &Arr) -> Arr {
-    let n = a.rows();
-    let k = a.cols();
-    let mut y = Arr::new(n);
-    for i in 0..n {
-        let mut s = 0.0;
-        for j in 0..k {
-            s += a.get(i, j) * x[j];
-        }
-        y[i] = s;
-    }
-    y
-}
 
 struct Data {
     site: Arr,
@@ -78,7 +43,7 @@ fn make_data() -> Data {
     for i in 0..N_SITE {
         for j in 0..N_SITE {
             let dd = d.get(i, j);
-            true_cov[[i, j]] = 4.0 * (-0.12 * dd * dd).exp();
+            true_cov[[i, j]] = 4.0 * gaussian_kernel(dd, 0.12);
         }
     }
     let xg = linspace(0.0, dmax, N_GRID);
@@ -98,19 +63,19 @@ fn make_y(d: &Arr, n: usize) -> Array2<f64> {
     for i in 0..ns {
         for j in 0..ns {
             let dd = d.get(i, j);
-            s.set(i, j, (-0.12 * dd * dd).exp());
+            s.set(i, j, gaussian_kernel(dd, 0.12));
         }
     }
     let a = linalg::cholesky(&s);
-    linalg::random_seed(5);
+    let mut rng = linalg::seeded_rng(5);
     let mut y = Arr::zeros(ns, ns);
     for _ in 0..n {
-        let mut x = linalg::randn(ns);
+        let mut x = linalg::randn_with(ns, &mut rng);
         for v in x.iter_mut() {
             *v *= 2.0;
         }
-        let ax = matvec(&a, &x);
-        let noise = linalg::randn(ns);
+        let ax = a.dot_mv(&x);
+        let noise = linalg::randn_with(ns, &mut rng);
         let mut yv = Arr::new(ns);
         for i in 0..ns {
             yv[i] = ax[i] + 1e-5 * noise[i];
@@ -130,18 +95,6 @@ fn make_y(d: &Arr, n: usize) -> Array2<f64> {
         }
     }
     arr_to_nd(&y)
-}
-
-fn poly_curve(c: &Arr, xg: &Arr) -> Arr {
-    let mut out = Arr::new(xg.size());
-    for (j, &x) in xg.iter().enumerate() {
-        let mut v = 0.0;
-        for &ci in c.iter().rev() {
-            v = v * x + ci;
-        }
-        out[j] = v;
-    }
-    out
 }
 
 fn count_increasing(curve: &Arr) -> usize {
@@ -206,20 +159,21 @@ struct Fit {
 }
 
 fn run_lsq(dat: &Data, v: &Variant, y: &Array2<f64>) -> Fit {
-    let (c, iters) = lsq_corr_generic(y, &v.sigma, v.n_coeff);
+    let fit = lsq_corr_generic(y, &v.sigma, v.n_coeff);
     let mut f = Fit {
         ok: false,
-        iters,
+        iters: fit.iters,
         rel_err: 0.0,
         min_eig: 0.0,
         n_inc: 0,
         coeffs: Arr::new(0),
     };
-    if c.size() != v.sigma.len() || c.iter().any(|z| !z.is_finite()) {
+    if !fit.ok || fit.coeffs.size() != v.sigma.len() || fit.coeffs.iter().any(|z| !z.is_finite()) {
         return f;
     }
+    let c = fit.coeffs;
     let om = corr_omega(&c, &v.sigma);
-    let rel = frob_nd(&(&om - &dat.true_cov)) / frob_nd(&dat.true_cov);
+    let rel = ndops::norm(&(&om - &dat.true_cov)) / ndops::norm(&dat.true_cov);
     let me = min_eig(&nd_to_arr(&om));
     if !rel.is_finite() || !me.is_finite() {
         return f;
@@ -227,7 +181,7 @@ fn run_lsq(dat: &Data, v: &Variant, y: &Array2<f64>) -> Fit {
     let curve = if v.is_bs {
         eval_bspline_curve(&v.t, 2, &c, &dat.xg)
     } else {
-        poly_curve(&c, &dat.xg)
+        eval_poly_curve(&c, &dat.xg)
     };
     f.ok = true;
     f.rel_err = rel;
@@ -343,25 +297,26 @@ fn experiment3(dat: &Data, vs: &[Variant], y: &Array2<f64>, csv: &mut File) {
 }
 
 fn run_ccp(v: &Variant, y: &Array2<f64>, n: usize, csv: &mut File, method: &str) {
-    let (x0, _lsq_iters) = lsq_corr_generic(y, &v.sigma, v.n_coeff);
-    if x0.size() != v.sigma.len() || x0.iter().any(|z| !z.is_finite()) {
+    let lsq = lsq_corr_generic(y, &v.sigma, v.n_coeff);
+    if !lsq.ok || lsq.coeffs.size() != v.sigma.len() || lsq.coeffs.iter().any(|z| !z.is_finite()) {
         println!("{method:<10} FAIL");
         writeln!(csv, "{n},{method},FAIL,,,").unwrap();
         return;
     }
+    let x0 = lsq.coeffs;
     let f0 = corr_mle_obj(&x0, &v.sigma, y);
     let mut x = x0;
     let mut f_old = 1e100;
     let mut rounds = 0usize;
     let mut f1 = f0;
     for _ in 0..50 {
-        let (xn, _iters) = cccp_corr_step(&v.sigma, y, x.clone(), v.n_coeff);
-        if xn.size() != x.size() {
+        let step = cccp_corr_step(&v.sigma, y, x.clone(), v.n_coeff);
+        if !step.ok {
             break;
         }
-        let f = corr_mle_obj(&xn, &v.sigma, y);
+        let f = corr_mle_obj(&step.coeffs, &v.sigma, y);
         rounds += 1;
-        x = xn;
+        x = step.coeffs;
         f1 = f;
         if (f_old - f).abs() < 1e-8 {
             break;

@@ -1,4 +1,6 @@
 use crate::lmi0_oracle::LMI0Oracle;
+use crate::mle_common::{optim_cut, MleScratch};
+use crate::ndops;
 use ellalgo_rs::arr::Arr;
 use ellalgo_rs::cutting_plane::{OracleFeas, OracleOptim, SingleCut};
 use lmi_solver_rs::lmi_oracle::LMIOracle;
@@ -9,6 +11,7 @@ pub struct MleOracle {
     Sigma: Vec<Array2<f64>>,
     lmi0: LMI0Oracle,
     lmi: LMIOracle,
+    scratch: MleScratch,
 }
 
 impl MleOracle {
@@ -21,6 +24,7 @@ impl MleOracle {
             Sigma,
             lmi0,
             lmi,
+            scratch: MleScratch::new(),
         }
     }
 }
@@ -38,90 +42,31 @@ impl OracleOptim<Arr> for MleOracle {
 
         let m = self.Y.nrows();
 
-        let R = self.lmi0.ldlt_mgr.sqrt();
-        let invR = inv_upper_tri(&R);
-        let Rt = invR.t().to_owned();
-        let S = ndarray_matmul(&invR, &Rt);
-        let SY = ndarray_matmul(&S, &self.Y);
+        self.scratch.update(&mut self.lmi0, &self.Y);
+        let s = &self.scratch.s;
+        let sy = &self.scratch.sy;
 
         let mut f1 = 0.0;
-        let dim = R.nrows();
+        let dim = self.scratch.r.nrows();
         for i in 0..dim {
-            f1 += (R[[i, i]]).ln();
+            f1 += self.scratch.r[[i, i]].ln();
         }
         f1 *= 2.0;
-        f1 += trace_ndarray(&SY);
+        f1 += ndops::trace(sy);
 
         let n = x.len();
         let mut g = Arr::new(n);
-        let V = &S - &ndarray_matmul(&SY, &S);
+        let v = s - &ndops::matmul(sy, s);
         for i in 0..n {
             let mut gi = 0.0;
             for r in 0..m {
                 for c in 0..m {
-                    gi += V[[c, r]] * self.Sigma[i][[r, c]];
+                    gi += v[[c, r]] * self.Sigma[i][[r, c]];
                 }
             }
             g[i] = gi;
         }
 
-        let f = f1 - *t;
-        if f >= 0.0 {
-            return ((g, SingleCut(f)), false);
-        }
-        *t = f1;
-        ((g, SingleCut(0.0)), true)
+        optim_cut(g, f1, t)
     }
-}
-
-fn inv_upper_tri(r: &Array2<f64>) -> Array2<f64> {
-    let n = r.nrows();
-    let mut x = Array2::zeros((n, n));
-    for j in 0..n {
-        for i in (0..=j).rev() {
-            let mut s = if i == j { 1.0 } else { 0.0 };
-            for k in (i + 1)..=j {
-                s -= r[[i, k]] * x[[k, j]];
-            }
-            x[[i, j]] = s / r[[i, i]];
-        }
-    }
-    x
-}
-
-fn ndarray_matmul(a: &Array2<f64>, b: &Array2<f64>) -> Array2<f64> {
-    let m = a.nrows();
-    let k = a.ncols();
-    let n = b.ncols();
-    let mut out = Array2::zeros((m, n));
-    // `as_standard_layout` is a no-op for C-order input and only copies when the
-    // strides require it — `invR.t().to_owned()` yields an F-order array.
-    let a = a.as_standard_layout();
-    let b = b.as_standard_layout();
-    let ad = a.as_slice().expect("standard layout is contiguous");
-    let bd = b.as_slice().expect("standard layout is contiguous");
-    let od = out.as_slice_mut().expect("out is contiguous");
-    // i-k-j order: `b`'s row `t` and `out`'s row `i` are both contiguous, so the
-    // inner loop auto-vectorizes and `b` streams through cache. The i-j-t order
-    // this replaces walked `b` one column at a time (stride n).
-    for i in 0..m {
-        let orow = &mut od[i * n..(i + 1) * n];
-        for t in 0..k {
-            let ait = ad[i * k + t];
-            let brow = &bd[t * n..(t + 1) * n];
-            for j in 0..n {
-                orow[j] += ait * brow[j];
-            }
-        }
-    }
-    out
-}
-
-fn trace_ndarray(a: &Array2<f64>) -> f64 {
-    let n = a.nrows();
-    let mut s = 0.0;
-    for i in 0..n {
-        s += a[[i, i]];
-    }
-    s
 }
