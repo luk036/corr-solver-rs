@@ -14,15 +14,26 @@ pub fn random_seed(seed: u64) {
     });
 }
 
-pub fn randn(n: usize) -> Arr {
+/// A deterministically seeded `StdRng`.
+pub fn seeded_rng(seed: u64) -> StdRng {
+    StdRng::seed_from_u64(seed)
+}
+
+/// Standard-normal samples drawn from an explicit RNG.
+pub fn randn_with(n: usize, rng: &mut StdRng) -> Arr {
     let normal = Normal::new(0.0, 1.0).unwrap();
+    let mut out = Arr::new(n);
+    for i in 0..n {
+        out[i] = normal.sample(rng);
+    }
+    out
+}
+
+/// Standard-normal samples drawn from the thread-local RNG.
+pub fn randn(n: usize) -> Arr {
     RNG.with(|rng| {
-        let mut rng = rng.borrow_mut();
-        let mut out = Arr::new(n);
-        for i in 0..n {
-            out[i] = normal.sample(&mut *rng);
-        }
-        out
+        let mut guard = rng.borrow_mut();
+        randn_with(n, &mut guard)
     })
 }
 

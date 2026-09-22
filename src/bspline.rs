@@ -1,7 +1,7 @@
 //! Quadratic B-spline basis with clamped knots and scipy-compatible
 //! extrapolation, plus the monotone-decreasing coefficient oracle.
 
-use crate::corr_helper::construct_distance_matrix;
+use crate::geometry::construct_distance_matrix;
 use ellalgo_rs::arr::{linspace, Arr};
 use ellalgo_rs::cutting_plane::{OracleOptim, SingleCut};
 use ndarray::Array2;
