@@ -124,4 +124,16 @@ impl QMIOracle {
     pub fn assess_feas(&mut self, x: &Arr) -> Option<(Arr, f64)> {
         self.gmi.assess_feas(x, &self.qmi)
     }
+
+    /// Squared norm of the witness over the failed block from the last
+    /// infeasible [`QMIOracle::assess_feas`] call; zero if not infeasible.
+    pub fn witness_norm_sq(&self) -> f64 {
+        let (start, stop) = self.gmi.ldlt_mgr.pos;
+        let mut s = 0.0;
+        for i in start..stop {
+            let w = self.gmi.ldlt_mgr.wit[i];
+            s += w * w;
+        }
+        s
+    }
 }

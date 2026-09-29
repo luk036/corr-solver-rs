@@ -42,12 +42,7 @@ impl OracleOptim<Arr> for LsqOracle {
             for i in 0..n - 1 {
                 g[i] = g1[i];
             }
-            let (start, stop) = self.qmi.gmi.ldlt_mgr.pos;
-            let mut v2norm2 = 0.0;
-            for i in start..stop {
-                v2norm2 += self.qmi.gmi.ldlt_mgr.wit[i] * self.qmi.gmi.ldlt_mgr.wit[i];
-            }
-            g[n - 1] = -(v2norm2);
+            g[n - 1] = -self.qmi.witness_norm_sq();
             return ((g, SingleCut(fj)), false);
         }
 

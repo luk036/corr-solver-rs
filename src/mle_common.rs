@@ -28,7 +28,7 @@ impl MleScratch {
 
     /// Refresh `R`, `S` and `SY` from the current LDLT factor of `lmi0`.
     pub fn update(&mut self, lmi0: &mut LMI0Oracle, y: &Array2<f64>) {
-        let r = lmi0.ldlt_mgr.sqrt();
+        let r = lmi0.sqrt_factor();
         let inv_r = ndops::inv_upper_tri(&r);
         self.s = ndops::matmul(&inv_r, &inv_r.t().to_owned());
         self.sy = ndops::matmul(&self.s, y);

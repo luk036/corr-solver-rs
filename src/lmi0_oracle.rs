@@ -3,7 +3,7 @@ use lmi_solver_rs::ldlt_mgr::LDLTMgr;
 use ndarray::Array2;
 
 pub struct LMI0Oracle {
-    pub ldlt_mgr: LDLTMgr,
+    ldlt_mgr: LDLTMgr,
     mat_f: Vec<Array2<f64>>,
 }
 
@@ -34,5 +34,10 @@ impl LMI0Oracle {
             *g = -self.ldlt_mgr.sym_quad(&self.mat_f[i]);
         }
         Some((Arr::from(g_vec), ep))
+    }
+
+    /// Upper-triangular factor `R` with `F(x) = R^T R` from the last factorization.
+    pub fn sqrt_factor(&self) -> Array2<f64> {
+        self.ldlt_mgr.sqrt()
     }
 }
