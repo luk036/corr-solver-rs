@@ -1,7 +1,9 @@
 //! Polynomial basis plus re-exports of the geometry and site generators.
 
 pub use crate::geometry::construct_distance_matrix;
-pub use crate::sites::{create_2d_isotropic, create_2d_isotropic_with, create_2d_sites};
+pub use crate::sites::{
+    create_2d_isotropic, create_2d_isotropic_with, create_2d_sites, sample_covariance,
+};
 
 use ellalgo_rs::arr::Arr;
 use ndarray::Array2;

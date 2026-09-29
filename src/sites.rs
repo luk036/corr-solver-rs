@@ -1,5 +1,6 @@
 //! Site layouts and biased sample covariance generation.
 
+use crate::geometry::construct_distance_matrix;
 use crate::kernels::exponential_kernel;
 use crate::linalg;
 use ellalgo_rs::arr::{linspace, Arr};
@@ -24,27 +25,10 @@ pub fn create_2d_isotropic(site: &Arr, n: usize) -> Arr {
     create_2d_isotropic_with(site, n, &mut linalg::seeded_rng(5))
 }
 
-/// As [`create_2d_isotropic`], drawing from an explicit RNG.
-pub fn create_2d_isotropic_with(site: &Arr, n: usize, rng: &mut StdRng) -> Arr {
-    let n_sites = site.rows();
-    let sdkern = 0.3;
-    let var = 2.0;
-    let tau = 0.00001;
-    let mut sig = Arr::zeros(n_sites, n_sites);
-    for i in 0..n_sites {
-        for j in i..n_sites {
-            let mut d = 0.0;
-            for k in 0..site.cols() {
-                let diff = site.get(j, k) - site.get(i, k);
-                d += diff * diff;
-            }
-            let val = exponential_kernel(d.sqrt(), sdkern);
-            sig.set(i, j, val);
-            sig.set(j, i, val);
-        }
-    }
-
-    let a = linalg::cholesky(&sig);
+/// Average `n` draws of `y y^T` with `y ~ N(0, var^2 Sigma + tau^2 I)`.
+pub fn sample_covariance(sigma: &Arr, n: usize, rng: &mut StdRng, var: f64, tau: f64) -> Arr {
+    let n_sites = sigma.rows();
+    let a = linalg::cholesky(sigma);
     let mut y = Arr::zeros(n_sites, n_sites);
     for _ in 0..n {
         let x = var * linalg::randn_with(n_sites, rng);
@@ -74,4 +58,18 @@ pub fn create_2d_isotropic_with(site: &Arr, n: usize, rng: &mut StdRng) -> Arr {
         }
     }
     y
+}
+
+/// As [`create_2d_isotropic`], drawing from an explicit RNG.
+pub fn create_2d_isotropic_with(site: &Arr, n: usize, rng: &mut StdRng) -> Arr {
+    let sdkern = 0.3;
+    let d = construct_distance_matrix(site);
+    let ns = d.rows();
+    let mut sig = Arr::zeros(ns, ns);
+    for i in 0..ns {
+        for j in 0..ns {
+            sig.set(i, j, exponential_kernel(d.get(i, j), sdkern));
+        }
+    }
+    sample_covariance(&sig, n, rng, 2.0, 0.00001)
 }

@@ -2,7 +2,9 @@ use corr_solver_rs::bspline::{
     clamped_knots, eval_bspline_basis, eval_bspline_curve, generate_bspline_info,
 };
 use corr_solver_rs::convert::{arr_to_ndarray as arr_to_nd, ndarray_to_arr as nd_to_arr};
-use corr_solver_rs::corr_helper::{construct_distance_matrix, construct_poly_matrix};
+use corr_solver_rs::corr_helper::{
+    construct_distance_matrix, construct_poly_matrix, sample_covariance,
+};
 use corr_solver_rs::eigen::{design_cond, min_eig};
 use corr_solver_rs::fitting::{
     cccp_corr_step, corr_mle_obj, corr_omega, eval_poly_curve, lsq_corr_generic,
@@ -66,35 +68,8 @@ fn make_y(d: &Arr, n: usize) -> Array2<f64> {
             s.set(i, j, gaussian_kernel(dd, 0.12));
         }
     }
-    let a = linalg::cholesky(&s);
     let mut rng = linalg::seeded_rng(5);
-    let mut y = Arr::zeros(ns, ns);
-    for _ in 0..n {
-        let mut x = linalg::randn_with(ns, &mut rng);
-        for v in x.iter_mut() {
-            *v *= 2.0;
-        }
-        let ax = a.dot_mv(&x);
-        let noise = linalg::randn_with(ns, &mut rng);
-        let mut yv = Arr::new(ns);
-        for i in 0..ns {
-            yv[i] = ax[i] + 1e-5 * noise[i];
-        }
-        for i in 0..ns {
-            for j in 0..ns {
-                let cur = y.get(i, j) + yv[i] * yv[j];
-                y.set(i, j, cur);
-            }
-        }
-    }
-    let nf = n as f64;
-    for i in 0..ns {
-        for j in 0..ns {
-            let cur = y.get(i, j) / nf;
-            y.set(i, j, cur);
-        }
-    }
-    arr_to_nd(&y)
+    arr_to_nd(&sample_covariance(&s, n, &mut rng, 2.0, 1e-5))
 }
 
 fn count_increasing(curve: &Arr) -> usize {
