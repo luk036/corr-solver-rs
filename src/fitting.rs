@@ -1,6 +1,6 @@
 //! Public fitting drivers for the polynomial and B-spline correlation models.
 
-use crate::bspline::{generate_bspline_info, MonoDecreasingOracle2};
+use crate::bspline::{generate_bspline_info, MonoDecreasingOracle};
 use crate::convert::{arr_to_ndarray, ndarray_to_arr};
 use crate::corr_helper::construct_poly_matrix;
 use crate::layouts::{cccp_initial_guess, lsq_initial_guess, mle_initial_guess, INITIAL_T};
@@ -43,7 +43,7 @@ macro_rules! with_mono {
     ($n_coeff:expr, $omega:expr, |$o:ident| $body:expr) => {
         match $n_coeff {
             Some(nc) => {
-                let mut $o = MonoDecreasingOracle2::new($omega, Some(nc));
+                let mut $o = MonoDecreasingOracle::new($omega, Some(nc));
                 $body
             }
             None => {

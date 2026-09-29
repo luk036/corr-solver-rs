@@ -140,18 +140,18 @@ pub fn mono_oracle(x: &Arr) -> Option<(Arr, f64)> {
 
 /// Enforce monotone non-increasing coefficients on the leading `n_coeff`
 /// entries, then delegate to the wrapped basis oracle.
-pub struct MonoDecreasingOracle2<O> {
+pub struct MonoDecreasingOracle<O> {
     basis: O,
     n_coeff: Option<usize>,
 }
 
-impl<O> MonoDecreasingOracle2<O> {
+impl<O> MonoDecreasingOracle<O> {
     pub fn new(basis: O, n_coeff: Option<usize>) -> Self {
-        MonoDecreasingOracle2 { basis, n_coeff }
+        MonoDecreasingOracle { basis, n_coeff }
     }
 }
 
-impl<O: OracleOptim<Arr, CutChoice = SingleCut>> OracleOptim<Arr> for MonoDecreasingOracle2<O> {
+impl<O: OracleOptim<Arr, CutChoice = SingleCut>> OracleOptim<Arr> for MonoDecreasingOracle<O> {
     type CutChoice = SingleCut;
 
     fn assess_optim(&mut self, x: &Arr, t: &mut f64) -> ((Arr, SingleCut), bool) {
@@ -171,3 +171,6 @@ impl<O: OracleOptim<Arr, CutChoice = SingleCut>> OracleOptim<Arr> for MonoDecrea
         self.basis.assess_optim(x, t)
     }
 }
+
+/// Backward-compatible alias for [`MonoDecreasingOracle`].
+pub type MonoDecreasingOracle2<O> = MonoDecreasingOracle<O>;

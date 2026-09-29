@@ -1,5 +1,5 @@
 use corr_solver_rs::bspline::{
-    clamped_knots, eval_bspline_basis, generate_bspline_info, mono_oracle, MonoDecreasingOracle2,
+    clamped_knots, eval_bspline_basis, generate_bspline_info, mono_oracle, MonoDecreasingOracle,
 };
 use corr_solver_rs::corr_helper::{construct_distance_matrix, construct_poly_matrix};
 use corr_solver_rs::eigen::design_cond;
@@ -187,7 +187,7 @@ fn test_mono_decreasing_oracle2() {
     let mut t = 1e100;
 
     // Leading 2 entries (2, 1) are decreasing -> delegate to the basis oracle.
-    let mut oracle = MonoDecreasingOracle2::new(
+    let mut oracle = MonoDecreasingOracle::new(
         StubBasis {
             calls: calls.clone(),
         },
@@ -204,7 +204,7 @@ fn test_mono_decreasing_oracle2() {
     assert_eq!(g[2], 0.0);
 
     // n_coeff = 3 constrains all entries; (2, 1, 5) increases at index 1.
-    let mut oracle2 = MonoDecreasingOracle2::new(
+    let mut oracle2 = MonoDecreasingOracle::new(
         StubBasis {
             calls: calls.clone(),
         },
@@ -219,7 +219,7 @@ fn test_mono_decreasing_oracle2() {
     assert_eq!(g2[2], 1.0);
 
     // n_coeff = 2 must leave the trailing entry unconstrained (zero-padded cut).
-    let mut oracle3 = MonoDecreasingOracle2::new(
+    let mut oracle3 = MonoDecreasingOracle::new(
         StubBasis {
             calls: calls.clone(),
         },
