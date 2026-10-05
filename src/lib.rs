@@ -15,6 +15,7 @@
 //! - [`geometry`] - Pairwise distance geometry
 //! - [`sites`] - Site layouts and biased sample covariance generation
 //! - [`layouts`] - Initial-guess strategies for the cutting-plane drivers
+//! - [`config`] - Numeric configuration for the solver cores
 //! - [`gmi_oracle`] - General Matrix Inequality oracle
 //! - [`qmi_oracle`] - Quadratic Matrix Inequality oracle
 //! - [`lmi0_oracle`] - LMI oracle with zero constant term (F(x) ⪰ 0)
@@ -30,6 +31,7 @@
 #![allow(non_snake_case)]
 
 pub mod bspline;
+pub mod config;
 pub mod convert;
 pub mod corr_helper;
 pub mod eigen;
