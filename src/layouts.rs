@@ -1,5 +1,6 @@
 //! Initial-guess strategies for the cutting-plane drivers.
 
+use crate::config::SolverConfig;
 use ellalgo_rs::arr::Arr;
 use ellalgo_rs::ell::Ell;
 
@@ -7,9 +8,9 @@ use ellalgo_rs::ell::Ell;
 pub const INITIAL_T: f64 = 1e100;
 
 /// Augmented `(coeffs..., t)` ellipsoid for the least-squares optimization.
-pub fn lsq_initial_guess(norm_y: f64, m: usize) -> Ell {
-    let norm_y2 = 32.0 * norm_y * norm_y;
-    let mut val = vec![256.0; m + 1];
+pub fn lsq_initial_guess(norm_y: f64, m: usize, cfg: &SolverConfig) -> Ell {
+    let norm_y2 = cfg.lsq_frob_scale * norm_y * norm_y;
+    let mut val = vec![cfg.lsq_aug_r0; m + 1];
     val[m] = norm_y2 * norm_y2;
     let mut x = Arr::new(m + 1);
     x[0] = 4.0;
@@ -18,13 +19,13 @@ pub fn lsq_initial_guess(norm_y: f64, m: usize) -> Ell {
 }
 
 /// Plain coefficient ellipsoid for the maximum-likelihood fit.
-pub fn mle_initial_guess(m: usize) -> Ell {
+pub fn mle_initial_guess(m: usize, cfg: &SolverConfig) -> Ell {
     let mut x = Arr::new(m);
     x[0] = 4.0;
-    Ell::new_with_scalar(500.0, x)
+    Ell::new_with_scalar(cfg.mle_r0, x)
 }
 
 /// Plain coefficient ellipsoid for one CCP round, centred on `x`.
-pub fn cccp_initial_guess(x: &Arr) -> Ell {
-    Ell::new_with_scalar(100.0, x.clone())
+pub fn cccp_initial_guess(x: &Arr, cfg: &SolverConfig) -> Ell {
+    Ell::new_with_scalar(cfg.mle_r0, x.clone())
 }

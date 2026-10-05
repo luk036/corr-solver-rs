@@ -1,6 +1,7 @@
 //! Public fitting drivers for the polynomial and B-spline correlation models.
 
 use crate::bspline::{generate_bspline_info, MonoDecreasingOracle};
+use crate::config::SolverConfig;
 use crate::convert::{arr_to_ndarray, ndarray_to_arr};
 use crate::corr_helper::construct_poly_matrix;
 use crate::layouts::{cccp_initial_guess, lsq_initial_guess, mle_initial_guess, INITIAL_T};
@@ -11,7 +12,7 @@ use crate::mle_common::{optim_cut, MleScratch};
 use crate::mle_oracle::MleOracle;
 use crate::ndops;
 use ellalgo_rs::arr::Arr;
-use ellalgo_rs::cutting_plane::{cutting_plane_optim, Options, OracleOptim, SingleCut};
+use ellalgo_rs::cutting_plane::{cutting_plane_optim, OracleOptim, SingleCut};
 use ndarray::Array2;
 
 /// Outcome of a correlation fit. `ok` is false when the cutting-plane search
@@ -58,10 +59,11 @@ fn lsq_corr_core2<O: OracleOptim<Arr, CutChoice = SingleCut>>(
     norm_y: f64,
     m: usize,
     omega: &mut O,
+    cfg: &SolverConfig,
 ) -> FitResult {
-    let mut ellip = lsq_initial_guess(norm_y, m);
+    let mut ellip = lsq_initial_guess(norm_y, m, cfg);
     let mut t = INITIAL_T;
-    let (x_best, iters) = cutting_plane_optim(omega, &mut ellip, &mut t, &Options::default());
+    let (x_best, iters) = cutting_plane_optim(omega, &mut ellip, &mut t, &cfg.options());
     match x_best {
         Some(xb) => {
             let mut coeffs = Arr::new(m);
@@ -89,28 +91,58 @@ pub fn lsq_corr_generic(
     sigma: &[Array2<f64>],
     n_coeff: Option<usize>,
 ) -> FitResult {
+    lsq_corr_generic_with_config(y, sigma, n_coeff, &SolverConfig::default())
+}
+
+/// As [`lsq_corr_generic`], with explicit solver constants.
+pub fn lsq_corr_generic_with_config(
+    y: &Array2<f64>,
+    sigma: &[Array2<f64>],
+    n_coeff: Option<usize>,
+    cfg: &SolverConfig,
+) -> FitResult {
     let m = sigma.len();
     let norm_y = ndops::norm(y);
     let omega = LsqOracle::new(y.nrows(), sigma.to_vec(), y.clone());
-    with_mono!(n_coeff, omega, |o| lsq_corr_core2(norm_y, m, &mut o))
+    with_mono!(n_coeff, omega, |o| lsq_corr_core2(norm_y, m, &mut o, cfg))
 }
 
 /// Least-squares fit of the polynomial basis `D^0..D^(m-1)`.
 pub fn lsq_corr_poly(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
+    lsq_corr_poly_with_config(y, site, m, &SolverConfig::default())
+}
+
+/// As [`lsq_corr_poly`], with explicit solver constants.
+pub fn lsq_corr_poly_with_config(
+    y: &Array2<f64>,
+    site: &Arr,
+    m: usize,
+    cfg: &SolverConfig,
+) -> FitResult {
     let sigma = construct_poly_matrix(site, m);
-    lsq_corr_generic(y, &sigma, None)
+    lsq_corr_generic_with_config(y, &sigma, None, cfg)
 }
 
 /// Least-squares fit of the quadratic B-spline basis, coefficients non-increasing.
 pub fn lsq_corr_bspline(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
-    let (sigma, _t, _k) = generate_bspline_info(site, m);
-    lsq_corr_generic(y, &sigma, Some(m))
+    lsq_corr_bspline_with_config(y, site, m, &SolverConfig::default())
 }
 
-fn mle_corr_core(m: usize, omega: &mut MleOracle) -> FitResult {
-    let mut ellip = mle_initial_guess(m);
+/// As [`lsq_corr_bspline`], with explicit solver constants.
+pub fn lsq_corr_bspline_with_config(
+    y: &Array2<f64>,
+    site: &Arr,
+    m: usize,
+    cfg: &SolverConfig,
+) -> FitResult {
+    let (sigma, _t, _k) = generate_bspline_info(site, m);
+    lsq_corr_generic_with_config(y, &sigma, Some(m), cfg)
+}
+
+fn mle_corr_core(m: usize, omega: &mut MleOracle, cfg: &SolverConfig) -> FitResult {
+    let mut ellip = mle_initial_guess(m, cfg);
     let mut t = INITIAL_T;
-    let (x_best, iters) = cutting_plane_optim(omega, &mut ellip, &mut t, &Options::default());
+    let (x_best, iters) = cutting_plane_optim(omega, &mut ellip, &mut t, &cfg.options());
     match x_best {
         Some(xb) => FitResult {
             coeffs: xb,
@@ -127,15 +159,34 @@ fn mle_corr_core(m: usize, omega: &mut MleOracle) -> FitResult {
 
 /// Maximum-likelihood fit over an explicit basis.
 pub fn mle_corr_generic(y: &Array2<f64>, sigma: &[Array2<f64>]) -> FitResult {
+    mle_corr_generic_with_config(y, sigma, &SolverConfig::default())
+}
+
+/// As [`mle_corr_generic`], with explicit solver constants.
+pub fn mle_corr_generic_with_config(
+    y: &Array2<f64>,
+    sigma: &[Array2<f64>],
+    cfg: &SolverConfig,
+) -> FitResult {
     let m = sigma.len();
     let mut omega = MleOracle::new(sigma.to_vec(), y.clone());
-    mle_corr_core(m, &mut omega)
+    mle_corr_core(m, &mut omega, cfg)
 }
 
 /// Maximum-likelihood fit of the polynomial basis subject to `2Y >= Omega >= 0`.
 pub fn mle_corr_poly(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
+    mle_corr_poly_with_config(y, site, m, &SolverConfig::default())
+}
+
+/// As [`mle_corr_poly`], with explicit solver constants.
+pub fn mle_corr_poly_with_config(
+    y: &Array2<f64>,
+    site: &Arr,
+    m: usize,
+    cfg: &SolverConfig,
+) -> FitResult {
     let sigma = construct_poly_matrix(site, m);
-    mle_corr_generic(y, &sigma)
+    mle_corr_generic_with_config(y, &sigma, cfg)
 }
 
 /// Assemble `Omega(x) = sum_i x_i Sigma_i`.
@@ -224,13 +275,24 @@ pub fn cccp_corr_step(
     x: Arr,
     n_coeff: Option<usize>,
 ) -> FitResult {
+    cccp_corr_step_with_config(sigma, y, x, n_coeff, &SolverConfig::default())
+}
+
+/// As [`cccp_corr_step`], with explicit solver constants.
+pub fn cccp_corr_step_with_config(
+    sigma: &[Array2<f64>],
+    y: &Array2<f64>,
+    x: Arr,
+    n_coeff: Option<usize>,
+    cfg: &SolverConfig,
+) -> FitResult {
     let m_inv = arr_to_ndarray(&linalg::inv(&ndarray_to_arr(&corr_omega(&x, sigma))));
     let omega = CccpMleOracle::new(sigma.to_vec(), y.clone(), &m_inv);
     let size = x.size();
     with_mono!(n_coeff, omega, |o| {
-        let mut ellip = cccp_initial_guess(&x);
+        let mut ellip = cccp_initial_guess(&x, cfg);
         let mut t = INITIAL_T;
-        let (x_best, iters) = cutting_plane_optim(&mut o, &mut ellip, &mut t, &Options::default());
+        let (x_best, iters) = cutting_plane_optim(&mut o, &mut ellip, &mut t, &cfg.options());
         match x_best {
             Some(xb) if xb.size() == size => FitResult {
                 coeffs: xb,
@@ -253,17 +315,28 @@ pub fn cccp_corr_generic(
     x: Arr,
     n_coeff: Option<usize>,
 ) -> FitResult {
+    cccp_corr_generic_with_config(sigma, y, x, n_coeff, &SolverConfig::default())
+}
+
+/// As [`cccp_corr_generic`], with explicit solver constants.
+pub fn cccp_corr_generic_with_config(
+    sigma: &[Array2<f64>],
+    y: &Array2<f64>,
+    x: Arr,
+    n_coeff: Option<usize>,
+    cfg: &SolverConfig,
+) -> FitResult {
     let mut x = x;
     let mut f_old = 1e100;
     let mut total_iters = 0;
-    for _ in 0..50 {
-        let step = cccp_corr_step(sigma, y, x.clone(), n_coeff);
+    for _ in 0..cfg.cccp_max_rounds {
+        let step = cccp_corr_step_with_config(sigma, y, x.clone(), n_coeff, cfg);
         total_iters += step.iters;
         if !step.ok {
             break;
         }
         let f_new = corr_mle_obj(&step.coeffs, sigma, y);
-        if (f_old - f_new).abs() < 1e-8 {
+        if (f_old - f_new).abs() < cfg.cccp_tol {
             x = step.coeffs;
             break;
         }
@@ -279,8 +352,18 @@ pub fn cccp_corr_generic(
 
 /// CCP MLE fit of the polynomial basis, warm-started from [`lsq_corr_poly`].
 pub fn cccp_corr_poly(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
+    cccp_corr_poly_with_config(y, site, m, &SolverConfig::default())
+}
+
+/// As [`cccp_corr_poly`], with explicit solver constants.
+pub fn cccp_corr_poly_with_config(
+    y: &Array2<f64>,
+    site: &Arr,
+    m: usize,
+    cfg: &SolverConfig,
+) -> FitResult {
     let sigma = construct_poly_matrix(site, m);
-    let lsq = lsq_corr_poly(y, site, m);
+    let lsq = lsq_corr_poly_with_config(y, site, m, cfg);
     if !lsq.ok {
         return FitResult {
             coeffs: Arr::new(0),
@@ -288,12 +371,22 @@ pub fn cccp_corr_poly(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
             ok: false,
         };
     }
-    cccp_corr_generic(&sigma, y, lsq.coeffs, None)
+    cccp_corr_generic_with_config(&sigma, y, lsq.coeffs, None, cfg)
 }
 
 /// CCP MLE fit of the B-spline basis, warm-started from [`lsq_corr_bspline`].
 pub fn cccp_corr_bspline(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
-    let lsq = lsq_corr_bspline(y, site, m);
+    cccp_corr_bspline_with_config(y, site, m, &SolverConfig::default())
+}
+
+/// As [`cccp_corr_bspline`], with explicit solver constants.
+pub fn cccp_corr_bspline_with_config(
+    y: &Array2<f64>,
+    site: &Arr,
+    m: usize,
+    cfg: &SolverConfig,
+) -> FitResult {
+    let lsq = lsq_corr_bspline_with_config(y, site, m, cfg);
     if !lsq.ok {
         return FitResult {
             coeffs: Arr::new(0),
@@ -302,5 +395,5 @@ pub fn cccp_corr_bspline(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
         };
     }
     let (sigma, _t, _k) = generate_bspline_info(site, m);
-    cccp_corr_generic(&sigma, y, lsq.coeffs, Some(m))
+    cccp_corr_generic_with_config(&sigma, y, lsq.coeffs, Some(m), cfg)
 }
