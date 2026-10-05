@@ -22,7 +22,7 @@ pub fn create_2d_sites(nx: usize, ny: usize) -> Arr {
 /// Uses the historical deterministic seed, so repeated calls reproduce the
 /// reference data.
 pub fn create_2d_isotropic(site: &Arr, n: usize) -> Arr {
-    create_2d_isotropic_with(site, n, &mut linalg::seeded_rng(5))
+    create_2d_isotropic_with(site, n, 0.3, 2.0, 0.00001, &mut linalg::seeded_rng(5))
 }
 
 /// Average `n` draws of `y y^T` with `y ~ N(0, var^2 Sigma + tau^2 I)`.
@@ -60,16 +60,24 @@ pub fn sample_covariance(sigma: &Arr, n: usize, rng: &mut StdRng, var: f64, tau:
     y
 }
 
-/// As [`create_2d_isotropic`], drawing from an explicit RNG.
-pub fn create_2d_isotropic_with(site: &Arr, n: usize, rng: &mut StdRng) -> Arr {
-    let sdkern = 0.3;
+/// As [`create_2d_isotropic`], drawing from an explicit RNG with an explicit
+/// kernel rate, signal standard deviation and observation-noise standard
+/// deviation.
+pub fn create_2d_isotropic_with(
+    site: &Arr,
+    n: usize,
+    rate: f64,
+    var: f64,
+    tau: f64,
+    rng: &mut StdRng,
+) -> Arr {
     let d = construct_distance_matrix(site);
     let ns = d.rows();
     let mut sig = Arr::zeros(ns, ns);
     for i in 0..ns {
         for j in 0..ns {
-            sig.set(i, j, exponential_kernel(d.get(i, j), sdkern));
+            sig.set(i, j, exponential_kernel(d.get(i, j), rate));
         }
     }
-    sample_covariance(&sig, n, rng, 2.0, 0.00001)
+    sample_covariance(&sig, n, rng, var, tau)
 }
