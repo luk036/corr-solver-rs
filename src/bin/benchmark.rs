@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use corr_solver_rs::convert::arr_to_ndarray;
 use corr_solver_rs::corr_helper::construct_poly_matrix;
-use corr_solver_rs::fitting::{lsq_corr_poly, mle_corr_poly};
+use corr_solver_rs::fitting::{cccp_corr_poly, lsq_corr_poly};
 use ellalgo_rs::arr::Arr;
 
 fn read_arr(file: &mut File) -> Arr {
@@ -94,7 +94,7 @@ fn main() {
     let mut mle_iters = 0;
     for run in 0..num_runs {
         let start = Instant::now();
-        let result = mle_corr_poly(&y, &site, m);
+        let result = cccp_corr_poly(&y, &site, m);
         let elapsed = start.elapsed().as_secs_f64();
         total_mle += elapsed;
         mle_iters = result.iters;

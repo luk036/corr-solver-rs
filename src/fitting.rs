@@ -4,12 +4,11 @@ use crate::bspline::{generate_bspline_info, MonoDecreasingOracle};
 use crate::config::SolverConfig;
 use crate::convert::{arr_to_ndarray, ndarray_to_arr};
 use crate::corr_helper::construct_poly_matrix;
-use crate::layouts::{cccp_initial_guess, lsq_initial_guess, mle_initial_guess, INITIAL_T};
+use crate::layouts::{cccp_initial_guess, lsq_initial_guess, INITIAL_T};
 use crate::linalg;
 use crate::lmi0_oracle::LMI0Oracle;
 use crate::lsq_oracle::LsqOracle;
 use crate::mle_common::{optim_cut, MleScratch};
-use crate::mle_oracle::MleOracle;
 use crate::ndops;
 use ellalgo_rs::arr::Arr;
 use ellalgo_rs::cutting_plane::{cutting_plane_optim, OracleOptim, SingleCut};
@@ -137,56 +136,6 @@ pub fn lsq_corr_bspline_with_config(
 ) -> FitResult {
     let (sigma, _t, _k) = generate_bspline_info(site, m);
     lsq_corr_generic_with_config(y, &sigma, Some(m), cfg)
-}
-
-fn mle_corr_core(m: usize, omega: &mut MleOracle, cfg: &SolverConfig) -> FitResult {
-    let mut ellip = mle_initial_guess(m, cfg);
-    let mut t = INITIAL_T;
-    let (x_best, iters) = cutting_plane_optim(omega, &mut ellip, &mut t, &cfg.options());
-    match x_best {
-        Some(xb) => FitResult {
-            coeffs: xb,
-            iters,
-            ok: true,
-        },
-        None => FitResult {
-            coeffs: Arr::new(0),
-            iters,
-            ok: false,
-        },
-    }
-}
-
-/// Maximum-likelihood fit over an explicit basis.
-pub fn mle_corr_generic(y: &Array2<f64>, sigma: &[Array2<f64>]) -> FitResult {
-    mle_corr_generic_with_config(y, sigma, &SolverConfig::default())
-}
-
-/// As [`mle_corr_generic`], with explicit solver constants.
-pub fn mle_corr_generic_with_config(
-    y: &Array2<f64>,
-    sigma: &[Array2<f64>],
-    cfg: &SolverConfig,
-) -> FitResult {
-    let m = sigma.len();
-    let mut omega = MleOracle::new(sigma.to_vec(), y.clone());
-    mle_corr_core(m, &mut omega, cfg)
-}
-
-/// Maximum-likelihood fit of the polynomial basis subject to `2Y >= Omega >= 0`.
-pub fn mle_corr_poly(y: &Array2<f64>, site: &Arr, m: usize) -> FitResult {
-    mle_corr_poly_with_config(y, site, m, &SolverConfig::default())
-}
-
-/// As [`mle_corr_poly`], with explicit solver constants.
-pub fn mle_corr_poly_with_config(
-    y: &Array2<f64>,
-    site: &Arr,
-    m: usize,
-    cfg: &SolverConfig,
-) -> FitResult {
-    let sigma = construct_poly_matrix(site, m);
-    mle_corr_generic_with_config(y, &sigma, cfg)
 }
 
 /// Assemble `Omega(x) = sum_i x_i Sigma_i`.

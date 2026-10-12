@@ -8,7 +8,7 @@ Rust implementation of correlation matrix solvers using the ellipsoid method.
 Solves correlation matrix identification problems by formulating them as semidefinite programs and solving via the cutting-plane / ellipsoid method. Two solvers are provided:
 
 - **LSQ (Least Squares)**: Minimizes the Frobenius-norm error between a parameterized correlation model and observed data.
-- **MLE (Maximum Likelihood)**: Maximizes the log-likelihood of observed data under a parameterized correlation model.
+- **MLE (Maximum Likelihood)**: Maximizes the log-likelihood of observed data under a parameterized correlation model, solved with the convex-concave procedure (CCP) that linearizes the concave `log det` term around the current iterate.
 
 Both solvers enforce positive-definiteness of the resulting correlation matrix via quadratic matrix inequality (QMI) constraints.
 

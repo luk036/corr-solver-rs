@@ -20,7 +20,6 @@
 //! - [`qmi_oracle`] - Quadratic Matrix Inequality oracle
 //! - [`lmi0_oracle`] - LMI oracle with zero constant term (F(x) ⪰ 0)
 //! - [`lsq_oracle`] - Least-squares correlation oracle
-//! - [`mle_oracle`] - Maximum likelihood estimation oracle
 //! - [`mle_common`] - Scratch and cut helpers shared by the MLE oracles
 //! - [`fitting`] - Public fitting drivers
 //! - [`bspline`] - Quadratic B-spline basis and the monotone oracle
@@ -45,7 +44,6 @@ pub mod linalg;
 pub mod lmi0_oracle;
 pub mod lsq_oracle;
 pub mod mle_common;
-pub mod mle_oracle;
 pub mod ndops;
 pub mod qmi_oracle;
 pub mod sites;

@@ -18,13 +18,6 @@ pub fn lsq_initial_guess(norm_y: f64, m: usize, cfg: &SolverConfig) -> Ell {
     Ell::new(Arr::from(val), x)
 }
 
-/// Plain coefficient ellipsoid for the maximum-likelihood fit.
-pub fn mle_initial_guess(m: usize, cfg: &SolverConfig) -> Ell {
-    let mut x = Arr::new(m);
-    x[0] = 4.0;
-    Ell::new_with_scalar(cfg.mle_r0, x)
-}
-
 /// Plain coefficient ellipsoid for one CCP round, centred on `x`.
 pub fn cccp_initial_guess(x: &Arr, cfg: &SolverConfig) -> Ell {
     Ell::new_with_scalar(cfg.mle_r0, x.clone())

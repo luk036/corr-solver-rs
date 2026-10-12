@@ -7,8 +7,8 @@ use ellalgo_rs::cutting_plane::Options;
 /// The initial radii are kept close to the coefficient scale: an ellipsoid much
 /// larger than the solution wastes iterations (the method needs
 /// `O(n^2 log(R/r))`), while one that is too small makes the subproblem
-/// infeasible. The MLE radius is shared by the CCP outer loop, which starts from
-/// the least-squares solution rather than the origin.
+/// infeasible. The coefficient radius is used by each CCP round, which starts
+/// from the least-squares solution rather than the origin.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SolverConfig {
     /// Initial MLE / CCP ellipsoid scale.
